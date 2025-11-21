@@ -74,20 +74,25 @@ pipeline:
               execution:
                 steps:
                   - step:
-                      type: ShellScript
-                      name: ShellScript_1
-                      identifier: ShellScript_1
+                      type: Command
+                      name: docker-execution
+                      identifier: dockerexecution
                       spec:
-                        shell: Bash
-                        executionTarget: {}
-                        source:
-                          type: Inline
-                          spec:
-                            script: |
-                              sudo docker pull royjith/docker:v1
-                              sudo docker ps
+                        onDelegate: false
                         environmentVariables: []
                         outputVariables: []
+                        commandUnits:
+                          - identifier: dockerpull
+                            name: dockerpull
+                            type: Script
+                            spec:
+                              shell: Bash
+                              source:
+                                type: Inline
+                                spec:
+                                  script: |-
+                                    sudo docker pull royjith/docker:v1
+                                    sudo docker ps
                       timeout: 10m
                 rollbackSteps: []
             tags: {}
