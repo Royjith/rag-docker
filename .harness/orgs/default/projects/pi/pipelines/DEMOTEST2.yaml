@@ -10,41 +10,97 @@ pipeline:
         connectorRef: dockerrag
         build: <+input>
   stages:
-    - stage:
-        name: build
-        identifier: build
-        description: ""
-        type: CI
-        spec:
-          cloneCodebase: true
-          caching:
-            enabled: true
-            override: true
-          buildIntelligence:
-            enabled: true
-          infrastructure:
-            type: VM
+    - parallel:
+        - stage:
+            name: build
+            identifier: build
+            description: ""
+            type: CI
             spec:
-              type: Pool
-              spec:
-                poolName: ubuntu-gcp
-                os: Linux
-          execution:
-            steps:
-              - step:
-                  type: Run
-                  name: Run_1
-                  identifier: Run_1
+              cloneCodebase: true
+              caching:
+                enabled: true
+                override: true
+              buildIntelligence:
+                enabled: true
+              infrastructure:
+                type: VM
+                spec:
+                  type: Pool
                   spec:
-                    shell: Sh
-                    command: echo "started"
-              - step:
-                  type: BuildAndPushDockerRegistry
-                  name: BuildAndPushDockerRegistry_1
-                  identifier: BuildAndPushDockerRegistry_1
-                  spec:
-                    connectorRef: dockerconnector
-                    repo: royjith/docker
-                    tags:
-                      - v1
-                    caching: true
+                    poolName: ubuntu-gcp
+                    os: Linux
+              execution:
+                steps:
+                  - step:
+                      type: Run
+                      name: Run_1
+                      identifier: Run_1
+                      spec:
+                        shell: Sh
+                        command: echo "started"
+                  - step:
+                      type: BuildAndPushDockerRegistry
+                      name: BuildAndPushDockerRegistry_1
+                      identifier: BuildAndPushDockerRegistry_1
+                      spec:
+                        connectorRef: dockerconnector
+                        repo: royjith/docker
+                        tags:
+                          - v1
+                        caching: true
+        - stage:
+            name: deploy
+            identifier: deploy
+            description: ""
+            type: Deployment
+            spec:
+              deploymentType: Ssh
+              service:
+                serviceRef: harness_ssh_rag
+                serviceInputs:
+                  serviceDefinition:
+                    type: Ssh
+                    spec:
+                      artifacts:
+                        primary:
+                          primaryArtifactRef: <+input>
+                          sources: <+input>
+              environment:
+                environmentRef: preproduction
+                deployToAll: false
+                infrastructureDefinitions:
+                  - identifier: infra
+              execution:
+                steps:
+                  - step:
+                      type: ShellScript
+                      name: ShellScript_1
+                      identifier: ShellScript_1
+                      spec:
+                        shell: Bash
+                        executionTarget: {}
+                        source:
+                          type: Inline
+                          spec:
+                            script: |
+                              sudo docker pull royjith/docker:v1
+                              sudo docker ps
+                        environmentVariables: []
+                        outputVariables: []
+                      timeout: 10m
+                rollbackSteps: []
+            tags: {}
+            failureStrategies:
+              - onFailure:
+                  errors:
+                    - AllErrors
+                  action:
+                    type: Retry
+                    spec:
+                      retryCount: 2
+                      retryIntervals:
+                        - 10m
+                      onRetryFailure:
+                        action:
+                          type: MarkAsFailure
