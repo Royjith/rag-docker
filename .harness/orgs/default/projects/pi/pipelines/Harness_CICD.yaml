@@ -84,3 +84,105 @@ pipeline:
                       type: docker_v2
                       tag: v1
                       name: royjith/docker
+    - stage:
+        name: Deployment
+        identifier: Deployment
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Ssh
+          service:
+            serviceRef: service21
+            serviceInputs:
+              serviceDefinition:
+                type: Ssh
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: <+input>
+                      sources: <+input>
+          environment:
+            environmentRef: prod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: prod_infra
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: ShellScript_1
+                  identifier: ShellScript_1
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          echo "Searching for containers on port 8501..."
+                           
+                          # Find all containers (running or stopped) on port 8501
+                          CONTAINERS=$(sudo docker ps -aq --filter "publish=8501")
+                           
+                          if [ -z "$CONTAINERS" ]; then
+                              echo " No containers found on port 8501"
+                              exit 0
+                          fi
+                           
+                          # Process each container
+                          for CONTAINER_ID in $CONTAINERS; do
+                              # Get image name
+                              IMAGE_NAME=$(sudo docker inspect --format='{{.Config.Image}}' $CONTAINER_ID 2>/dev/null)
+                              CONTAINER_NAME=$(sudo docker inspect --format='{{.Name}}' $CONTAINER_ID 2>/dev/null | sed 's/\///')
+                             
+                              echo ""
+                              echo "Container: $CONTAINER_NAME ($CONTAINER_ID)"
+                              echo " Image: $IMAGE_NAME"
+                             
+                              # Remove container
+                              echo " Removing container..."
+                              sudo docker rm -f $CONTAINER_ID
+                             
+                              # Remove image
+                              echo " Removing image..."
+                              sudo docker rmi $IMAGE_NAME 2>/dev/null || echo " Image might be used by other containers"
+                             
+                              echo "Cleaned up!"
+                          done
+                           
+                          echo ""
+                          echo " All done!"
+                           
+                          # Show remaining images
+                          echo ""
+                          echo "Remaining rag-chatbot images:"
+                          docker images | grep rag-chatbot || echo "None"
+                           
+                           
+                          # Export secrets as environment variables
+                          export COHERE_API_KEY="<+secrets.getValue("COHERE_API_KEY")>"
+                          export PINECONE_API_KEY="<+secrets.getValue("PINECONE_API_KEY")>"
+                          export VLLM_API_URL="<+secrets.getValue("VLLM_API_URL")>"
+                           
+                           
+                          # Run container with secrets
+                          /usr/bin/docker run -d \
+                            --name rag-chatbot \
+                            -p 8501:8501 \
+                            -e COHERE_API_KEY \
+                            -e PINECONE_API_KEY \
+                            -e VLLM_API_URL \
+                            --restart unless-stopped \
+                            royjith/docker:v1
+                            
+                    environmentVariables: []
+                    outputVariables: []
+                  timeout: 10m
+            rollbackSteps: []
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Ignore
