@@ -49,7 +49,7 @@ pipeline:
                   name: BuildAndPushDockerRegistry_1
                   identifier: BuildAndPushDockerRegistry_1
                   spec:
-                    connectorRef: newdockerregistry_connector
+                    connectorRef: dockerartifact2
                     repo: royjith/docker
                     tags:
                       - v1
