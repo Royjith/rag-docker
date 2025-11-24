@@ -84,6 +84,8 @@ pipeline:
                       type: docker_v2
                       tag: v1
                       name: royjith/docker
+        delegateSelectors:
+          - docker-delegate-new1
     - stage:
         name: Deployment
         identifier: Deployment
