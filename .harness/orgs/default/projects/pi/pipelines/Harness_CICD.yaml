@@ -103,7 +103,10 @@ pipeline:
                   identifier: ShellScript_1
                   spec:
                     shell: Bash
-                    executionTarget: {}
+                    executionTarget:
+                      host: 35.244.0.143
+                      connectorRef: llmsshkey
+                      workingDirectory: /home/satyajith_k
                     source:
                       type: Inline
                       spec:
