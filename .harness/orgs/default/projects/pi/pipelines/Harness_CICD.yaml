@@ -105,7 +105,7 @@ pipeline:
                     shell: Bash
                     executionTarget:
                       host: 35.244.0.143
-                      connectorRef: llmssh
+                      connectorRef: sshkeydemo
                       workingDirectory: /home/satyajith_k
                     source:
                       type: Inline
